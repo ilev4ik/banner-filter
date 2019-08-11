@@ -12,15 +12,17 @@
 
 struct banner
 {
-	banner(int a, int p): adv_id(a), price(p)
+	banner(int id, int pr, const std::string& country)
+	    : adv_id(id), price(pr)
 	{
-		country= "russia";
+		countries.insert(country);
 	}
 
 	int adv_id;
 	int price;
-	std::string country; // array
+	std::unordered_set<std::string> countries;
 };
+
 
 template <typename C>
 class hash_back_insert_iterator {
@@ -75,11 +77,9 @@ std::ostream& operator<<(std::ostream& os, const std::vector<T>& vec) {
 	return os;
 }
 
-
-
 struct calc_rv
 {
-    struct gcomapre
+    struct greater_sum
     {
         bool operator()(const calc_rv& lhs, const calc_rv& rhs) {
             return lhs.sum > rhs.sum;
@@ -100,7 +100,7 @@ struct calc_rv
 
 struct max_sum_price_block
 {
-	struct price_summerizer
+	struct price_summator
 	{
 		int operator()(const banner& b, int acc) {
 			return acc + b.price;
@@ -111,10 +111,10 @@ struct max_sum_price_block
 		}
 	};
 
-	struct banner_price_gcompare
+	struct banner_price_greater
 	{
-		bool operator()(const banner& lhs, const banner& rhs) {
-			return lhs.price > rhs.price;
+		bool operator()(const banner& lhs, const banner& rhs) const {
+			return lhs.price > rhs.price;;
 		}
 	};
 
@@ -124,12 +124,12 @@ struct max_sum_price_block
 	}
 
 	void operator()(std::vector<banner>& banners, std::promise<calc_rv> p) {
-        // banners is not empty
+        // precondition: banners is not empty
         const auto pivot_offset = std::min(m_lots, banners.size());
         auto to_it = std::next(banners.begin(), pivot_offset);
-        std::partial_sort(banners.begin(), to_it, banners.end(), banner_price_gcompare{});
-        const auto max_bounded_price = std::accumulate(banners.begin(), to_it, (std::size_t) 0, price_summerizer{});
-        p.set_value({max_bounded_price, pivot_offset, banners[0].adv_id});
+        std::partial_sort(banners.begin(), to_it, banners.end(), banner_price_greater{});
+        const auto max_bounded_price = std::accumulate(banners.begin(), to_it, (std::size_t) 0, price_summator{});
+        p.set_value_at_thread_exit({max_bounded_price, pivot_offset, banners[0].adv_id});
 	}
 
 private:
@@ -157,7 +157,7 @@ private:
     bool apply(const T& obj) const
     {
         auto check_pred = [obj](const pred_type& pred) { return !pred(obj); };
-        return std::all_of(m_preds.begin(), m_preds.end(), std::move(check_pred));
+        return std::all_of(m_preds.begin(), m_preds.end(), check_pred);
     }
 
 private:
@@ -172,18 +172,14 @@ std::vector<banner> auction(std::vector<banner> banners, std::size_t lots, filte
 	std::move(banners.begin(), filtered_banner_end, hash_back_inserter(by_adv));
 	if (by_adv.empty()) return {};
 
-	// hardware_concurrentcy
-    std::vector<std::thread> threads;
+	// hardware_concurrency
 	std::vector<std::future<calc_rv>> max_prices;
 
 	for (auto&& kv : by_adv) {
 		std::promise<calc_rv> p;
-
 		max_prices.push_back(p.get_future());
-		threads.emplace_back(max_sum_price_block(lots), std::ref(kv.second), std::move(p));
+        std::thread(max_sum_price_block(lots), std::ref(kv.second), std::move(p)).detach();
 	}
-
-    std::for_each(threads.begin(), threads.end(), std::mem_fn(&std::thread::join));
 
 	std::vector<calc_rv> results;
 	std::transform(max_prices.begin(), max_prices.end(), std::back_inserter(results),
@@ -192,15 +188,12 @@ std::vector<banner> auction(std::vector<banner> banners, std::size_t lots, filte
 		return f.get();
 	});
 
-	std::sort(results.begin(), results.end(), calc_rv::gcomapre{});
-	const auto first_max = results[0];
+	std::sort(results.begin(), results.end(), calc_rv::greater_sum{});
 
-	// adjacent find ? equal range?
 	auto right_it = std::adjacent_find(results.begin(), results.end(), calc_rv::non_equal_sum{});
     std::random_device rd;
     std::mt19937 gen(rd());
-    auto d = std::distance(results.begin(), right_it);
-    std::uniform_int_distribution<> dis(0, d);
+    std::uniform_int_distribution<> dis(0, std::distance(results.begin(), right_it));
     auto max_it = std::next(results.begin(), dis(gen));
 
     const auto& cont = by_adv[max_it->id];
@@ -215,17 +208,17 @@ std::vector<banner> auction(std::vector<banner> banners, std::size_t lots, filte
 
 int main() {
     std::vector<banner> banners {
-            {1, 200},
-            {1, 200},
-            {1, 300},
-            {2, 400},
-            {3, 500},
-            {4, 600},
-            {5, 700}
+            {1, 200, "russia"},
+            {1, 200, "russia"},
+            {1, 300, "russia"},
+            {2, 400, "russia"},
+            {3, 500, "russia"},
+            {4, 600, "russia"},
+            {5, 700, "russia"}
     };
 
     filter<banner> banner_filter;
-	banner_filter.add([](const banner& b) -> bool { return b.country == "russia"; });
+	banner_filter.add([](const banner& b) -> bool { return b.countries.count("russia"); });
 
 	const auto& res = auction(banners, 3, banner_filter);
 	std::cout << res << std::endl;
