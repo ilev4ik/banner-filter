@@ -8,6 +8,7 @@
 #include <future>
 #include <random>
 
+#include "tuple_utils.h"
 #include "hash_back_inserter.h"
 #include "simple_thread_pool.h"
 
@@ -74,7 +75,7 @@ struct banner_traits<banner>
             }
         };
 
-        std::size_t sum;
+        sum_t sum;
         std::size_t offset;
         int id;
     };
@@ -111,6 +112,7 @@ struct banner_ex : banner
     }
 };
 
+// TODO: generarilze banner_traits<>
 template <>
 struct banner_traits<banner_ex>
 {
@@ -119,7 +121,6 @@ struct banner_traits<banner_ex>
     struct greater
     {
         bool operator()(const banner_ex& lhs, const banner_ex& rhs) const {
-            // lexicographical_compare of tuples
             return lhs.rank() > rhs.rank();
         }
     };
@@ -127,14 +128,29 @@ struct banner_traits<banner_ex>
     struct summator
     {
         sum_t operator()(sum_t acc, const banner_ex& b) {
-            auto r = b.rank();
-            // TODO: make element-wise addition of 2 tuples (c++14 feature)
-            std::get<0>(acc) += std::get<0>(r);
-            std::get<1>(acc) += std::get<1>(r);
-            std::get<2>(acc) += std::get<2>(r);
-            std::get<3>(acc) += std::get<3>(r);
-            return acc;
+            return acc + b.rank();
         }
+    };
+
+    struct calc_rv
+    {
+        struct greater
+        {
+            bool operator()(const calc_rv& lhs, const calc_rv& rhs) {
+                return lhs.sum > rhs.sum;
+            }
+        };
+
+        struct non_equal
+        {
+            bool operator()(const calc_rv& lhs, const calc_rv& rhs) {
+                return lhs.sum != rhs.sum;
+            }
+        };
+
+        sum_t sum;
+        std::size_t offset;
+        int id;
     };
 };
 
@@ -313,7 +329,7 @@ std::vector<BT> auction(std::vector<BT> banners, std::size_t lots, filter<BT> ba
 }
 
 int main() {
-/*
+
     using banner_t = banner_ex;
     std::vector<banner_t> banners {
             {1, 200, 100},
@@ -324,8 +340,9 @@ int main() {
             {4, 600},
             {5, 700, 250}
     };
-*/
 
+
+/*
     using banner_t = banner;
     std::vector<banner_t> banners {
             {1, 200},
@@ -339,7 +356,7 @@ int main() {
             {9, 600},
             {2, 600},
     };
-
+*/
     filter<banner_t> banner_filter;
 	banner_filter.add([](const banner_t& b) -> bool
 	{
