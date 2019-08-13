@@ -128,6 +128,7 @@ struct banner_traits<banner_ex>
     {
         sum_t operator()(sum_t acc, const banner_ex& b) {
             auto r = b.rank();
+            // TODO: make element-wise addition of 2 tuples (c++14 feature)
             std::get<0>(acc) += std::get<0>(r);
             std::get<1>(acc) += std::get<1>(r);
             std::get<2>(acc) += std::get<2>(r);
@@ -136,7 +137,6 @@ struct banner_traits<banner_ex>
         }
     };
 };
-
 
 template <typename T>
 std::ostream& operator<<(std::ostream& os, const std::vector<T>& vec) {
@@ -212,57 +212,107 @@ private:
 };
 
 template <typename BT>
-std::vector<BT> auction(std::vector<BT> banners, std::size_t lots, filter<BT> banner_filter)
+class lyciator
 {
     using calc_rv_t = typename banner_traits<BT>::calc_rv;
-    // отфильтровать
-    auto filtered_banner_end = std::remove_if(banners.begin(), banners.end(), std::move(banner_filter));
+    using calc_it_t = typename std::vector<calc_rv_t>::iterator;
 
-    // разбить на группы по adv_id
-	std::unordered_map<int, std::vector<BT>> by_adv;
-	std::move(banners.begin(), filtered_banner_end, hash_back_inserter(by_adv));
-	if (by_adv.empty()) return {};
+    template <typename T>
+    friend std::vector<T> auction(std::vector<T> banners, std::size_t lots, filter<T> banner_filter);
 
-    std::vector<std::future<calc_rv_t>> max_prices;
+    explicit lyciator(std::vector<BT>&& banners)
+        : rd()
+        , gen(rd())
+        , m_banners(std::move(banners))
+    {}
+
+    auto make_filter(filter<BT>&& banner_filter)
+    -> typename std::vector<BT>::iterator
     {
-        // отправить на выделенные потоки задачи на подсчёт суммы цен (решения сути задачи)
-        simple_thread_pool thread_pool(std::thread::hardware_concurrency());
-
-        for (auto &&kv : by_adv) {
-            max_prices.push_back(thread_pool.enqueue([&]{ return max_sum_price_block<BT>{lots}(kv.second);} ));
-        }
+        return std::remove_if(m_banners.begin(), m_banners.end(), std::move(banner_filter));
     }
 
-	// извлечь данные из фьючерсов
-	std::vector<calc_rv_t> results;
-	std::transform(max_prices.begin(), max_prices.end(), std::back_inserter(results),
-		[](std::future<calc_rv_t>& f)
-	{
-		return f.get();
-	});
+    auto group_by_id(typename std::vector<BT>::iterator end)
+    -> std::unordered_map<int, std::vector<BT>>
+    {
+        // разбить на группы по adv_id
+        std::unordered_map<int, std::vector<BT>> by_adv;
+        std::move(m_banners.begin(), end, hash_back_inserter(by_adv));
+        return std::move(by_adv);
+    }
 
-	// найти списки баннеров с одинаковой самой высокой ценой
-	std::sort(results.begin(), results.end(), typename calc_rv_t::greater{});
-	auto right_it = std::adjacent_find(results.begin(), results.end(), typename calc_rv_t::non_equal{});
+    auto find_best_concurrently(std::unordered_map<int, std::vector<BT>>& by_adv_id, std::size_t lots) const
+    -> std::vector<calc_rv_t>
+    {
+        std::vector<std::future<calc_rv_t>> max_prices;
+        {
+            // thread_pool с оптимальным количеством потоков-воркеров
+            simple_thread_pool thread_pool(std::thread::hardware_concurrency());
 
-	// равновероятно выбрать из этого списка 1
+            // решение сути задачи
+            // отправить на выделенные потоки задачи на подсчёт суммы цен для одинаковых adv_id
+            for (auto&& kv : by_adv_id) {
+                max_prices.push_back(thread_pool.enqueue([&]{ return max_sum_price_block<BT>{lots}(kv.second);} ));
+            }
+        }
+
+        // извлечь данные из фьючерсов
+        std::vector<calc_rv_t> results;
+        std::transform(max_prices.begin(), max_prices.end(), std::back_inserter(results),
+               [](std::future<calc_rv_t>& f)
+               {
+                   return f.get();
+               });
+
+        // TODO: NRVO or std::move (entire project question)
+        return std::move(results);
+    }
+
+    calc_it_t prioritize(std::vector<calc_rv_t>& results) const
+    {
+        // найти списки баннеров с самым высоким приоритетом
+        std::sort(results.begin(), results.end(), typename calc_rv_t::greater{});
+        return std::adjacent_find(results.begin(), results.end(), typename calc_rv_t::non_equal{});
+    }
+
+    calc_it_t choose_uniformly(calc_it_t left_it, calc_it_t right_it)
+    {
+        // равновероятно выбрать из множества равнопредпочитаемых списков баннеров
+        std::uniform_int_distribution<> dis(0, std::distance(left_it, right_it));
+        return std::next(left_it, dis(gen));
+    }
+
+    std::vector<BT> run_auction(std::size_t lots, filter<BT>&& banner_filter)
+    {
+        // процесс аукциона
+        auto filtered_banner_end = make_filter(std::move(banner_filter));
+        auto by_adv_id = group_by_id(filtered_banner_end);
+        auto max_prices = find_best_concurrently(by_adv_id, lots);
+        const auto right_it = prioritize(max_prices);
+        auto best_it = choose_uniformly(max_prices.begin(), right_it);
+
+        // переместить в возвращаемый результат
+        const auto& cont = by_adv_id[best_it->id];
+        auto from_it = cont.cbegin();
+        auto to_it = std::next(cont.cbegin(), best_it->offset);
+        std::vector<BT> rv;
+        std::move(from_it, to_it, std::back_inserter(rv));
+        return rv;
+    }
+
     std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis(0, std::distance(results.begin(), right_it));
-    auto max_it = std::next(results.begin(), dis(gen));
+    std::mt19937 gen;
+    std::vector<BT> m_banners;
+};
 
-    // переместить в возвращаемый результат
-    const auto& cont = by_adv[max_it->id];
-    auto from_it = cont.begin();
-    auto to_it = std::next(cont.begin(), max_it->offset);
-    std::vector<BT> v;
-    std::move(from_it, to_it, std::back_inserter(v));
-
-	return v;
+template <typename BT>
+std::vector<BT> auction(std::vector<BT> banners, std::size_t lots, filter<BT> banner_filter)
+{
+    lyciator<BT> lyc(std::move(banners));
+	return lyc.run_auction(lots, std::move(banner_filter));;
 }
 
 int main() {
-
 /*
     using banner_t = banner_ex;
     std::vector<banner_t> banners {
@@ -279,12 +329,15 @@ int main() {
     using banner_t = banner;
     std::vector<banner_t> banners {
             {1, 200},
-            {1, 200},
-            {1, 300},
-            {2, 400},
-            {3, 500},
-            {4, 600},
-            {5, 700}
+            {2, 200},
+            {3, 300},
+            {4, 400},
+            {5, 800},
+            {6, 600},
+            {7, 600},
+            {8, 700},
+            {9, 600},
+            {2, 600},
     };
 
     filter<banner_t> banner_filter;
@@ -296,6 +349,5 @@ int main() {
 	const auto& res = auction(banners, 10, banner_filter);
 	std::cout << res << std::endl;
 
-	//std::cin.get();
 	return 0;
 }
