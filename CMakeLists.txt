@@ -3,4 +3,4 @@ project(rambler_banners)
 
 set(CMAKE_CXX_STANDARD 11)
 
-add_executable(rambler_banners main.cpp)
+add_executable(rambler_banners main.cpp hash_back_inserter.h)
