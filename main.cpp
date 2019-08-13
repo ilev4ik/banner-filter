@@ -9,6 +9,7 @@
 #include <random>
 
 #include "hash_back_inserter.h"
+#include "simple_thread_pool.h"
 
 template <typename T>
 struct banner_traits {};
@@ -42,12 +43,40 @@ struct banner_traits<banner>
         }
     };
 
+    struct equal
+    {
+        bool operator()(const banner& lhs, const banner& rhs) const {
+            return lhs.price == rhs.price;
+        }
+    };
+
     using sum_t = std::size_t;
     struct summator
     {
         sum_t operator()(sum_t acc, const banner& b) {
             return acc + b.price;
         }
+    };
+
+    struct calc_rv
+    {
+        struct greater
+        {
+            bool operator()(const calc_rv& lhs, const calc_rv& rhs) {
+                return lhs.sum > rhs.sum;
+            }
+        };
+
+        struct non_equal
+        {
+            bool operator()(const calc_rv& lhs, const calc_rv& rhs) {
+                return lhs.sum != rhs.sum;
+            }
+        };
+
+        std::size_t sum;
+        std::size_t offset;
+        int id;
     };
 };
 
@@ -90,6 +119,7 @@ struct banner_traits<banner_ex>
     struct greater
     {
         bool operator()(const banner_ex& lhs, const banner_ex& rhs) const {
+            // lexicographical_compare of tuples
             return lhs.rank() > rhs.rank();
         }
     };
@@ -97,7 +127,12 @@ struct banner_traits<banner_ex>
     struct summator
     {
         sum_t operator()(sum_t acc, const banner_ex& b) {
-            return sum_t{};//acc + b.rank();
+            auto r = b.rank();
+            std::get<0>(acc) += std::get<0>(r);
+            std::get<1>(acc) += std::get<1>(r);
+            std::get<2>(acc) += std::get<2>(r);
+            std::get<3>(acc) += std::get<3>(r);
+            return acc;
         }
     };
 };
@@ -113,33 +148,13 @@ std::ostream& operator<<(std::ostream& os, const std::vector<T>& vec) {
 	return os;
 }
 
-struct calc_rv
-{
-    struct greater
-    {
-        bool operator()(const calc_rv& lhs, const calc_rv& rhs) {
-            return lhs.sum > rhs.sum;
-        }
-    };
-
-    struct non_equal
-    {
-        bool operator()(const calc_rv& lhs, const calc_rv& rhs) {
-            return lhs.sum != rhs.sum;
-        }
-    };
-
-    std::size_t sum;
-    std::size_t offset;
-    int id;
-};
-
 template <typename BT>
 struct max_sum_price_block
 {
     using compare_greater = typename banner_traits<BT>::greater;
     using summator = typename banner_traits<BT>::summator;
     using sum_t = typename banner_traits<BT>::sum_t;
+    using calc_rv_t = typename banner_traits<BT>::calc_rv;
 
 	explicit max_sum_price_block(std::size_t lots): max_sum_price_block(lots, delegate_tag{})
 	{
@@ -148,7 +163,7 @@ struct max_sum_price_block
 
 	// сортируется переданный массив: & banners
 	// offset -- индекс последнего баннера после сортировки
-	void operator()(std::vector<BT>& banners, std::promise<calc_rv> p) noexcept {
+    calc_rv_t operator()(std::vector<BT>& banners) noexcept {
         // precondition: banners is not empty
 
         // кол-во лотов (выходных баннеров)
@@ -159,8 +174,7 @@ struct max_sum_price_block
         std::partial_sort(banners.begin(), to_it, banners.end(), compare_greater{});
         const auto max_bounded_price = std::accumulate(banners.begin(), to_it, sum_t{}, summator{});
 
-        // установка значения по выходу из нити, т.к. .detach
-        p.set_value_at_thread_exit({max_bounded_price, pivot_offset, banners[0].adv_id});
+        return {max_bounded_price, pivot_offset, banners[0].adv_id};
 	}
 
 private:
@@ -200,6 +214,7 @@ private:
 template <typename BT>
 std::vector<BT> auction(std::vector<BT> banners, std::size_t lots, filter<BT> banner_filter)
 {
+    using calc_rv_t = typename banner_traits<BT>::calc_rv;
     // отфильтровать
     auto filtered_banner_end = std::remove_if(banners.begin(), banners.end(), std::move(banner_filter));
 
@@ -208,27 +223,27 @@ std::vector<BT> auction(std::vector<BT> banners, std::size_t lots, filter<BT> ba
 	std::move(banners.begin(), filtered_banner_end, hash_back_inserter(by_adv));
 	if (by_adv.empty()) return {};
 
-	// TODO: hardware_concurrency
-	// отправить на выделенные потоки задачи на подсчёт суммы цен (решения сути задачи)
-	std::vector<std::future<calc_rv>> max_prices;
+    std::vector<std::future<calc_rv_t>> max_prices;
+    {
+        // отправить на выделенные потоки задачи на подсчёт суммы цен (решения сути задачи)
+        simple_thread_pool thread_pool(std::thread::hardware_concurrency());
 
-	for (auto&& kv : by_adv) {
-		std::promise<calc_rv> p;
-		max_prices.push_back(p.get_future());
-        std::thread(max_sum_price_block<BT>(lots), std::ref(kv.second), std::move(p)).detach();
-	}
+        for (auto &&kv : by_adv) {
+            max_prices.push_back(thread_pool.enqueue([&]{ return max_sum_price_block<BT>{lots}(kv.second);} ));
+        }
+    }
 
 	// извлечь данные из фьючерсов
-	std::vector<calc_rv> results;
+	std::vector<calc_rv_t> results;
 	std::transform(max_prices.begin(), max_prices.end(), std::back_inserter(results),
-		[](std::future<calc_rv>& f)
+		[](std::future<calc_rv_t>& f)
 	{
 		return f.get();
 	});
 
 	// найти списки баннеров с одинаковой самой высокой ценой
-	std::sort(results.begin(), results.end(), calc_rv::greater{});
-	auto right_it = std::adjacent_find(results.begin(), results.end(), calc_rv::non_equal{});
+	std::sort(results.begin(), results.end(), typename calc_rv_t::greater{});
+	auto right_it = std::adjacent_find(results.begin(), results.end(), typename calc_rv_t::non_equal{});
 
 	// равновероятно выбрать из этого списка 1
     std::random_device rd;
@@ -261,7 +276,6 @@ int main() {
     };
 */
 
-
     using banner_t = banner;
     std::vector<banner_t> banners {
             {1, 200},
@@ -272,8 +286,6 @@ int main() {
             {4, 600},
             {5, 700}
     };
-
-
 
     filter<banner_t> banner_filter;
 	banner_filter.add([](const banner_t& b) -> bool
