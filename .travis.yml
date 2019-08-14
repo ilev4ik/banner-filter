@@ -1,20 +1,45 @@
 language: cpp
-dist: trusty
-sudo: required
-os: linux
-
-compiler:
-  - gcc
 
 env:
-  - TARGET_CPU=amd64 BUILD_CONFIGURATION=Debug
-  - TARGET_CPU=amd64 BUILD_CONFIGURATION=Release
-  - TARGET_CPU=x86 BUILD_CONFIGURATION=Debug
-  - TARGET_CPU=x86 BUILD_CONFIGURATION=Release
+  global:
+    # Ubuntu version
+    - LINUX_DIST=trusty
+    - DEPS_DIR=${TRAVIS_BUILD_DIR}/deps
+    - RUN_TESTS=true
+
+matrix:
+  include:
+    - os: linux
+      dist: trusty
+      sudo: true
+      compiler: gcc
+      addons:
+        apt:
+          packages:
+            - gcc-4.8
+
+          sources:
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-precise-3.7
+
+before_install:
+  # Combine global build options with OS/compiler-dependent options
+  - export CMAKE_OPTIONS=${CMAKE_OPTIONS}" "${ENV_CMAKE_OPTIONS}
+  - export CXX_FLAGS=${CXX_FLAGS}" "${ENV_CXX_FLAGS}
+
+install:
+  - echo ${PATH}
+  - echo ${CXX}
+  - ${CXX} --version
+  - ${CXX} -v
 
 script:
-  - mkdir build
+  ############################################################################
+  # Build main and tests
+  ############################################################################
+  - mkdir -p build
   - cd build
-  - cmake .. -DCMAKE_BUILD_TYPE=$BUILD_CONFIGURATION -DTARGET_CPU=$TARGET_CPU
-  - cmake --build .
-  - ctest --output-on-failure
+  - cmake ${CMAKE_OPTIONS} -DCMAKE_CXX_FLAGS=${CXX_FLAGS} -DCMAKE_BUILD_TYPE=Coverage -DBUILD_TESTS=ON ..
+  - make
+  - make project1_coverage
+  - ctest
