@@ -1,6 +1,6 @@
 # Рекламный аукцион
 
-[![Build Status](https://travis-ci.com/ilev4ik/banner-filter.svg?branch=ci)](https://travis-ci.com/ilev4ik/banner-filter)
+[![Build Status](https://travis-ci.com/ilev4ik/banner-filter.svg?branch=master)](https://travis-ci.com/ilev4ik/banner-filter)
 
 Реализована функция рекламного аукциона с дополнительными возможностями:
 
