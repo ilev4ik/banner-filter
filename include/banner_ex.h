@@ -7,9 +7,10 @@
 
 #include "tuple_utils.h"
 
-struct banner_ex : public eq_mixin<banner_ex>
+class banner_ex : public eq_mixin<banner_ex>
 {
     using rank_t = std::tuple<int, int, int, int, int>;
+public:
     rank_t rank() const { return std::make_tuple(price, popularity, pxm_bytes, area(), perimeter()); }
     friend class banner_traits<banner_ex>;
     banner_ex(int id, std::size_t pr, int pop)

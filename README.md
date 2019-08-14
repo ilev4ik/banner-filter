@@ -11,11 +11,11 @@
 Класс `banner` должен удовлетворять опредённым условиям, чтобы работали доп. возможности.
 
  ```cpp
-class banner
+class banner : public eq_mixin<banner>
 {
+public:
     using rank_t = int;
     rank_t rank() const { return price; }
-public:
     friend class banner_traits<banner>;
     ... 
 };
