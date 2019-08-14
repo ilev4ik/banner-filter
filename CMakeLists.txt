@@ -12,5 +12,7 @@ set(HEADERS
         ${INCLUDE_DIR}/simple_thread_pool.h
         ${INCLUDE_DIR}//tuple_utils.h include/banner_traits.h include/banner.h include/banner_ex.h include/filter.h include/lyciator.h)
 
+enable_testing()
 add_subdirectory(test)
+
 add_executable(rambler_banners_${CMAKE_BUILD_TYPE} src/main.cpp ${HEADERS})
