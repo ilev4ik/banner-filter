@@ -17,16 +17,11 @@ std::ostream& operator<<(std::ostream& os, const std::vector<T>& vec) {
 
 int main()
 {
-    using banner_t = banner_ex;
+    using banner_t = banner;
 
     std::vector<banner_t> banners {
-            {1, 200, 100},
             {1, 200},
-            {1, 300, 100},
-            {2, 400},
-            {3, 500},
-            {4, 600},
-            {5, 700, 250}
+            {2, 200}
     };
 
     filter<banner_t> banner_filter;
@@ -35,7 +30,7 @@ int main()
 	    return b.countries.empty() ? true : b.countries.count("russia");
 	});
 
-	const auto& res = auction(banners, 0, banner_filter);
+	const auto& res = auction(std::vector<banner_t>{}, 5, banner_filter);
 	std::cout << res << std::endl;
 
 	return 0;
