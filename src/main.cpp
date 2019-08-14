@@ -193,6 +193,7 @@ class lyciator
 
     std::vector<BT> run_auction(std::size_t lots, filter<BT>&& banner_filter)
     {
+        if (lots == 0) throw std::invalid_argument("lots parameter have to be positive");
         // процесс аукциона
         auto filtered_banner_end = make_filter(std::move(banner_filter));
         auto by_adv_id = group_by_id(filtered_banner_end);
@@ -224,6 +225,7 @@ std::vector<BT> auction(std::vector<BT> banners, std::size_t lots, filter<BT> ba
 int main()
 {
     using banner_t = banner_ex;
+    /*
     std::vector<banner_t> banners {
             {1, 200, 100},
             {1, 200},
@@ -233,7 +235,8 @@ int main()
             {4, 600},
             {5, 700, 250}
     };
-
+     */
+    std::vector<banner_t> banners;
 
 /*
     using banner_t = banner;
@@ -256,7 +259,7 @@ int main()
 	    return b.countries.empty() ? true : b.countries.count("russia");
 	});
 
-	const auto& res = auction(banners, 10, banner_filter);
+	const auto& res = auction(banners, 0, banner_filter);
 	std::cout << res << std::endl;
 
 	return 0;

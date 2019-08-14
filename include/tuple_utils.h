@@ -26,8 +26,10 @@ namespace lvn
     template<std::size_t N>
     using make_index_sequence = make_integer_sequence<std::size_t, N>;
 
+
     template<typename... T>
     using index_sequence_for = make_index_sequence<sizeof...(T)>;
+
 }
 
 template<typename... T1, typename... T2, std::size_t... I>
