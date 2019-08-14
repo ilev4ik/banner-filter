@@ -86,8 +86,3 @@ TEST(SimpleBannerList, MultiAccumulatedMultipleLotsBest)
     };
     ASSERT_EQ(auction(banners, 3),(empty_banner_list<>{{2, 200}, {2, 100}, {2, 1}}));
 }
-
-TEST(FalseTest, HA)
-{
-    ASSERT_TRUE(false);
-}
