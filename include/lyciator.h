@@ -45,7 +45,7 @@ class lyciator
             , m_banners(std::move(banners))
     {}
 
-    auto make_filter(filter<BT>& banner_filter)
+    auto make_filter(filter<BT>&& banner_filter)
     -> typename std::vector<BT>::iterator
     {
         return std::remove_if(m_banners.begin(), m_banners.end(), std::move(banner_filter));
@@ -108,7 +108,7 @@ class lyciator
         std::vector<BT> rv;
 
         // процесс аукциона
-        auto filtered_banner_end = make_filter(banner_filter);
+        auto filtered_banner_end = make_filter(std::move(banner_filter));
         if (std::distance(m_banners.begin(), filtered_banner_end)) {
             auto by_adv_id = group_by_id(filtered_banner_end);
             auto max_prices = find_best_concurrently(by_adv_id, lots);

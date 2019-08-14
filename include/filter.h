@@ -22,12 +22,13 @@ public:
     bool has_preds() const {
         return !m_preds.empty();
     }
+
 private:
     bool apply(const T& obj) const
     {
         // проверка объекта на условия всех предикатов фильтра
         auto check_pred = [obj](const pred_type& pred) { return !pred(obj); };
-        return std::all_of(m_preds.begin(), m_preds.end(), check_pred);
+        return has_preds() ? std::all_of(m_preds.begin(), m_preds.end(), check_pred) : false;
     }
 
 private:
