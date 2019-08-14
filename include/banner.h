@@ -2,15 +2,16 @@
 #ifndef RAMBLER_BANNERS_BANNER_H
 #define RAMBLER_BANNERS_BANNER_H
 
-#include "banner_traits.h"
 #include <unordered_set>
 #include <ostream>
 
-class banner
+#include "banner_traits.h"
+
+class banner : public eq_mixin<banner>
 {
     using rank_t = int;
-    rank_t rank() const { return price; }
 public:
+    rank_t rank() const { return price; }
     friend class banner_traits<banner>;
     banner(int id, int pr) : adv_id(id), price(pr) {}
     banner(int id, int pr, const std::string& country)

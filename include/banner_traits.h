@@ -4,6 +4,16 @@
 
 #include <cstddef>
 
+#include "banner.h"
+
+template <typename T>
+struct eq_mixin
+{
+    friend bool operator==(const T& lhs, const T& rhs) {
+        return lhs.rank() == rhs.rank();
+    }
+};
+
 template <typename T>
 struct banner_traits
 {
@@ -15,14 +25,6 @@ struct banner_traits
             return lhs.rank() > rhs.rank();
         }
     };
-
-    struct equal
-    {
-        bool operator()(const T& lhs, const T& rhs) const {
-            return lhs.rank() == rhs.rank();
-        }
-    };
-
 
     struct summator
     {

@@ -19,6 +19,9 @@ public:
         return apply(obj);
     }
 
+    bool has_preds() const {
+        return !m_preds.empty();
+    }
 private:
     bool apply(const T& obj) const
     {

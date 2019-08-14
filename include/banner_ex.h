@@ -3,9 +3,11 @@
 #define RAMBLER_BANNERS_BANNER_EX_H
 
 #include "banner.h"
+#include "banner_traits.h"
+
 #include "tuple_utils.h"
 
-class banner_ex : public banner
+class banner_ex : public banner, public eq_mixin<banner_ex>
 {
     using rank_t = std::tuple<int, int, int, int, int>;
     rank_t rank() const { return std::make_tuple(price, popularity, pxm_bytes, area(), perimeter()); }
