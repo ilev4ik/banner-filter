@@ -8,77 +8,30 @@
 #include <future>
 #include <random>
 
+#include "banner_traits.h"
 #include "tuple_utils.h"
 #include "hash_back_inserter.h"
 #include "simple_thread_pool.h"
 
-template <typename T>
-struct banner_traits {};
-
 struct banner
 {
+    using rank_t = int;
     banner(int id, int pr) : adv_id(id), price(pr) {}
-
 	banner(int id, int pr, const std::string& country)
 	    : adv_id(id), price(pr)
 	{
 		countries.insert(country);
 	}
 
+    rank_t rank() const { return price; }
+
 	int adv_id;
-	int price;
+	rank_t price;
 	std::unordered_set<std::string> countries;
 
     friend std::ostream& operator<<(std::ostream& os, const banner& b) {
         return os << '{' << b.adv_id << ", " << b.price << '}';
     }
-};
-
-template <>
-struct banner_traits<banner>
-{
-    struct greater
-    {
-        bool operator()(const banner& lhs, const banner& rhs) const {
-            return lhs.price > rhs.price;
-        }
-    };
-
-    struct equal
-    {
-        bool operator()(const banner& lhs, const banner& rhs) const {
-            return lhs.price == rhs.price;
-        }
-    };
-
-    using sum_t = std::size_t;
-    struct summator
-    {
-        sum_t operator()(sum_t acc, const banner& b) {
-            return acc + b.price;
-        }
-    };
-
-    struct calc_rv
-    {
-        struct greater
-        {
-            bool operator()(const calc_rv& lhs, const calc_rv& rhs) {
-                return lhs.sum > rhs.sum;
-            }
-        };
-
-        struct non_equal
-        {
-            bool operator()(const calc_rv& lhs, const calc_rv& rhs) {
-                return lhs.sum != rhs.sum;
-            }
-        };
-
-        sum_t sum;
-        std::size_t offset;
-        int id;
-    };
 };
 
 struct banner_ex : banner
@@ -110,48 +63,6 @@ struct banner_ex : banner
     friend std::ostream& operator<<(std::ostream& os, const banner_ex& b) {
         return os << '{' << b.adv_id << ", " << b.price << ", " << b.popularity << "..." <<'}';
     }
-};
-
-// TODO: generarilze banner_traits<>
-template <>
-struct banner_traits<banner_ex>
-{
-    using sum_t = typename banner_ex::rank_t;
-
-    struct greater
-    {
-        bool operator()(const banner_ex& lhs, const banner_ex& rhs) const {
-            return lhs.rank() > rhs.rank();
-        }
-    };
-
-    struct summator
-    {
-        sum_t operator()(sum_t acc, const banner_ex& b) {
-            return acc + b.rank();
-        }
-    };
-
-    struct calc_rv
-    {
-        struct greater
-        {
-            bool operator()(const calc_rv& lhs, const calc_rv& rhs) {
-                return lhs.sum > rhs.sum;
-            }
-        };
-
-        struct non_equal
-        {
-            bool operator()(const calc_rv& lhs, const calc_rv& rhs) {
-                return lhs.sum != rhs.sum;
-            }
-        };
-
-        sum_t sum;
-        std::size_t offset;
-        int id;
-    };
 };
 
 template <typename T>

@@ -10,7 +10,7 @@ include_directories(${INCLUDE_DIR})
 set(HEADERS
         ${INCLUDE_DIR}/hash_back_inserter.h
         ${INCLUDE_DIR}/simple_thread_pool.h
-        include/tuple_utils.h)
+        ${INCLUDE_DIR}//tuple_utils.h include/banner_traits.h)
 
 add_subdirectory(test)
 add_executable(rambler_banners_${CMAKE_BUILD_TYPE} src/main.cpp ${HEADERS})
