@@ -1,45 +1,37 @@
 language: cpp
-
-env:
-  global:
-    # Ubuntu version
-    - LINUX_DIST=trusty
-    - DEPS_DIR=${TRAVIS_BUILD_DIR}/deps
-    - RUN_TESTS=true
-
 matrix:
   include:
     - os: linux
       dist: trusty
-      sudo: true
       compiler: gcc
+      env:
+        - COMPILER=g++-4.8
       addons:
         apt:
-          packages:
-            - gcc-4.8
-
-          sources:
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-precise-3.7
+          sources: ['ubuntu-toolchain-r-test']
+          packages: [g++-4.8]
 
 before_install:
-  # Combine global build options with OS/compiler-dependent options
-  - export CMAKE_OPTIONS=${CMAKE_OPTIONS}" "${ENV_CMAKE_OPTIONS}
-  - export CXX_FLAGS=${CXX_FLAGS}" "${ENV_CXX_FLAGS}
+  - sudo apt-get -qq update
+  - sudo apt-get install -y libgtest-dev
+  - sudo wget https://github.com/google/googletest/archive/release-1.7.0.tar.gz
+  - sudo tar xf release-1.7.0.tar.gz
+  - cd googletest-release-1.7.0
+  - sudo cmake -DBUILD_SHARED_LIBS=ON .
+  - sudo make
+  - sudo cp -a include/gtest /usr/include
+  - sudo cp -a libgtest_main.so libgtest.so /usr/lib/
+  - cd "${TRAVIS_BUILD_DIR}"
 
-install:
-  - echo ${PATH}
-  - echo ${CXX}
-  - ${CXX} --version
-  - ${CXX} -v
-
-script:
-  ############################################################################
-  # Build main and tests
-  ############################################################################
-  - mkdir -p build
-  - cd build
-  - cmake ${CMAKE_OPTIONS} -DCMAKE_CXX_FLAGS=${CXX_FLAGS} -DCMAKE_BUILD_TYPE=Coverage -DBUILD_TESTS=ON ..
+before_script:
+  - cd test/
+  - cmake -Dtest=ON ../
   - make
-  - make project1_coverage
-  - ctest
+  - ls -l
+
+#script: "./easyloggingpp-unit-tests -v && cd ../samples/STL && pwd && sh ./.travis_build.sh && valgrind ./bin/very-basic.cpp.bin"
+branches:
+  only:
+    - ci
+    - master
+    - dev
