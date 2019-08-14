@@ -7,22 +7,28 @@
 
 #include "tuple_utils.h"
 
-class banner_ex : public banner, public eq_mixin<banner_ex>
+struct banner_ex : public eq_mixin<banner_ex>
 {
     using rank_t = std::tuple<int, int, int, int, int>;
     rank_t rank() const { return std::make_tuple(price, popularity, pxm_bytes, area(), perimeter()); }
-
-public:
     friend class banner_traits<banner_ex>;
-    using banner::banner;
-    banner_ex(int id, int pr, int pop)
-            : banner(id, pr), popularity(pop)
+    banner_ex(int id, std::size_t pr, int pop)
+        : adv_id(id), price(pr), popularity(pop)
     {}
 
-    int popularity = -1;
-    int pxm_bytes = -1;
-    int width = -1;
-    int height = -1;
+    banner_ex(int id, std::size_t pr, const std::string& c, int pop)
+            : adv_id(id), price(pr), popularity(pop)
+    {
+        countries.insert(c);
+    }
+
+    int adv_id;
+    std::size_t price;
+    int popularity = 0;
+    int pxm_bytes = 0;
+    int width = 0;
+    int height = 0;
+    std::unordered_set<std::string> countries;
 
     int area() const {
         return width * height;

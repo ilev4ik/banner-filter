@@ -71,7 +71,7 @@ class lyciator
             // решение сути задачи
             // отправить на выделенные потоки задачи на подсчёт суммы цен для одинаковых adv_id
             for (auto&& kv : by_adv_id) {
-                max_prices.push_back(thread_pool.enqueue([this, lots, kv]() mutable {
+                max_prices.push_back(thread_pool.enqueue([this, lots, &kv]() {
                     return find_best_n_banners(lots, kv.second);
                 }));
             }
@@ -92,13 +92,14 @@ class lyciator
     {
         // найти списки баннеров с самым высоким приоритетом
         std::sort(results.begin(), results.end(), typename calc_rv_t::greater{});
-        return std::adjacent_find(results.begin(), results.end(), typename calc_rv_t::non_equal{});
+        return std::adjacent_find(results.begin(), results.end(), typename calc_rv_t::non_equal{});;
     }
 
     calc_it_t choose_uniformly(calc_it_t left_it, calc_it_t right_it)
     {
         // равновероятно выбрать из множества равнопредпочитаемых списков баннеров
-        std::uniform_int_distribution<> dis(0, std::distance(left_it, right_it));
+        const auto d = std::max((ptrdiff_t)0, std::distance(left_it, right_it) - 1);
+        std::uniform_int_distribution<std::size_t> dis(0, d);
         return std::next(left_it, dis(gen));
     }
 

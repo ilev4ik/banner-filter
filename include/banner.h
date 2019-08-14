@@ -9,12 +9,12 @@
 
 class banner : public eq_mixin<banner>
 {
-    using rank_t = int;
+    using rank_t = std::size_t;
 public:
     rank_t rank() const { return price; }
     friend class banner_traits<banner>;
-    banner(int id, int pr) : adv_id(id), price(pr) {}
-    banner(int id, int pr, const std::string& country)
+    banner(int id, std::size_t pr) : adv_id(id), price(pr) {}
+    banner(int id, std::size_t pr, const std::string& country)
             : adv_id(id), price(pr)
     {
         countries.insert(country);
