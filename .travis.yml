@@ -22,12 +22,14 @@ before_install:
   - sudo cp -a include/gtest /usr/include
   - sudo cp -a libgtest_main.so libgtest.so /usr/lib/
   - cd "${TRAVIS_BUILD_DIR}"
+  - ls -l
 
 before_script:
   - cd test/
   - cmake -Dtest=ON ../
   - make
   - ls -l
+  - cd ..
 
 script:
   - mkdir build
