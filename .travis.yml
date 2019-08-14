@@ -29,7 +29,12 @@ before_script:
   - make
   - ls -l
 
-#script: "./easyloggingpp-unit-tests -v && cd ../samples/STL && pwd && sh ./.travis_build.sh && valgrind ./bin/very-basic.cpp.bin"
+script:
+  - mkdir build
+  - cd build
+  - cmake .. -DCMAKE_BUILD_TYPE=$BUILD_CONFIGURATION -DTARGET_CPU=$TARGET_CPU
+  - cmake --build .
+
 branches:
   only:
     - ci
