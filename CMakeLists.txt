@@ -11,9 +11,18 @@ include_directories(${INCLUDE_DIR})
 set(HEADERS
         ${INCLUDE_DIR}/hash_back_inserter.h
         ${INCLUDE_DIR}/simple_thread_pool.h
-        ${INCLUDE_DIR}//tuple_utils.h include/banner_traits.h include/banner.h include/banner_ex.h include/filter.h include/lyciator.h)
+        ${INCLUDE_DIR}/tuple_utils.h
+        ${INCLUDE_DIR}/banner_traits.h
+        ${INCLUDE_DIR}/banner.h
+        ${INCLUDE_DIR}/banner_ex.h
+        ${INCLUDE_DIR}/filter.h
+        ${INCLUDE_DIR}/lyciator.h
+        )
 
 enable_testing()
 add_subdirectory(test)
 
-add_executable(rambler_banners_${CMAKE_BUILD_TYPE} src/main.cpp ${HEADERS})
+set(TARGET rambler_banners_${CMAKE_BUILD_TYPE})
+add_executable(TARGET src/main.cpp ${HEADERS})
+target_compile_options(TARGET PRIVATE --coverage)
+target_link_libraries(TARGET PRIVATE --coverage)
