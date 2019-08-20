@@ -9,7 +9,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: [g++-4.8]
+          packages: [g++-4.8, lcov]
 
 before_install:
   - sudo apt-get -qq update
@@ -35,11 +35,21 @@ script:
   - mkdir build
   - cd build
   - cmake .. -DCMAKE_BUILD_TYPE=$BUILD_CONFIGURATION -DTARGET_CPU=$TARGET_CPU
-  - cmake --build .
-  - ctest .. --output-on-failure
+  - cmake --build . -j $(nproc)
+  - ctest .. -j $(nproc) --output-on-failure
+
+after_success:
+  - lcov --directory . --capture --output-file coverage.info
+  - lcov --remove coverage.info '/usr/*' "${HOME}"'/.cache/*' --output-file coverage.info
+  - lcov --list coverage.info
+  - bash <(curl -s https://codecov.io/bash) -t fd59c9b2-732f-4edd-bea6-893ff5418ecf
 
 branches:
   only:
     - ci
     - master
     - dev
+
+notifications:
+  email:
+    - ilev4ik@gmail.com

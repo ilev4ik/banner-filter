@@ -1,6 +1,8 @@
 # Рекламный аукцион
 
 [![Build Status](https://travis-ci.com/ilev4ik/banner-filter.svg?branch=master)](https://travis-ci.com/ilev4ik/banner-filter)
+[![codecov](https://codecov.io/gh/ilev4ik/banner-filter/branch/master/graph/badge.svg)](https://codecov.io/gh/ilev4ik/banner-filter)
+
 
 Реализована функция рекламного аукциона с дополнительными возможностями:
 
@@ -13,8 +15,8 @@
  ```cpp
 class banner : public eq_mixin<banner>
 {
-public:
     using rank_t = int;
+public:
     rank_t rank() const { return price; }
     friend class banner_traits<banner>;
     ... 
