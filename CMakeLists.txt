@@ -19,24 +19,10 @@ set(HEADERS
         ${INCLUDE_DIR}/lyciator.h
         )
 
-add_library(coverage_config INTERFACE)
-option(CODE_COVERAGE "Enable coverage reporting" OFF)
-if(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    # Add required flags (GCC & LLVM/Clang)
-    target_compile_options(coverage_config INTERFACE
-            -O0        # no optimization
-            -g         # generate debug info
-            --coverage # sets all required flags
-            )
-    if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.13)
-        target_link_options(coverage_config INTERFACE --coverage)
-    else()
-        target_link_libraries(coverage_config INTERFACE --coverage)
-    endif()
-endif(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-
 enable_testing()
 add_subdirectory(test)
 
 set(TARGETNAME rambler_banners_${CMAKE_BUILD_TYPE})
 add_executable(${TARGETNAME} src/main.cpp ${HEADERS})
+target_compile_options(${TARGETNAME} PRIVATE --coverage)
+target_link_options(${TARGETNAME} PRIVATE --coverage)
