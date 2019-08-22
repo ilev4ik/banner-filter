@@ -8,7 +8,7 @@ matrix:
         - COMPILER=g++-4.8
       addons:
         apt:
-          sources: ['ubuntu-toolchain-r-test']
+          sources: ['ubuntu-toolchain-r-tests']
           packages: [g++-4.8, lcov]
 
 before_install:
@@ -36,7 +36,7 @@ install:
 
 before_script:
   - cd ${TRAVIS_BUILD_DIR}
-  - cd test/
+  - cd tests/
   - cmake -Dtest=ON ../
   - make
   - pwd && ls -la
