@@ -21,16 +21,17 @@ int main()
 
     std::vector<banner_t> banners {
             {1, 200},
-            {2, 200}
+            {2, 200},
+            {2, 100}
     };
 
     filter<banner_t> banner_filter;
 	banner_filter.add([](const banner_t& b) -> bool
 	{
-	    return b.countries.empty() ? true : b.countries.count("russia");
+	    return true;//b.countries.empty() ? true : b.countries.count("russia");
 	});
 
-	const auto& res = auction(std::vector<banner_t>{}, 5, banner_filter);
+	const auto& res = auction(banners, 2);//, banner_filter);
 	std::cout << res << std::endl;
 
 	return 0;

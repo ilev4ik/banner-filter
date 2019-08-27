@@ -12,6 +12,10 @@ struct eq_mixin
     friend bool operator==(const T& lhs, const T& rhs) {
         return lhs.rank() == rhs.rank();
     }
+
+    friend bool operator!=(const T& lhs, const T& rhs) {
+        return lhs.rank() != rhs.rank();
+    }
 };
 
 template <typename T>
@@ -23,6 +27,12 @@ struct banner_traits
     {
         bool operator()(const T& lhs, const T& rhs) const {
             return lhs.rank() > rhs.rank();
+        }
+    };
+
+    struct non_equal {
+        bool operator()(const T& lhs, const T& rhs) const {
+            return lhs.rank() != rhs.rank();
         }
     };
 

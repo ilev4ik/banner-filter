@@ -19,6 +19,7 @@ public:
     auto enqueue(F&& f, Args&&... args)
     -> std::future<typename std::result_of<F(Args...)>::type>;
 
+    void wait_all();
     ~simple_thread_pool();
 
 private:
@@ -28,6 +29,7 @@ private:
     std::mutex queue_mutex;
     std::condition_variable condition;
     bool stop = false;
+    bool wait_all_flag = false;
 };
 
 inline simple_thread_pool::simple_thread_pool(std::size_t thread_count)
@@ -43,7 +45,7 @@ inline simple_thread_pool::simple_thread_pool(std::size_t thread_count)
 
                         {
                             std::unique_lock<std::mutex> lock(queue_mutex);
-                            condition.wait(lock, [this]{return stop || !tasks.empty();});
+                            condition.wait(lock, [this]{ return stop || !tasks.empty();});
                             if (stop && tasks.empty()) return;
                             task = std::move(tasks.front());
                             tasks.pop();
@@ -53,6 +55,11 @@ inline simple_thread_pool::simple_thread_pool(std::size_t thread_count)
                     }
                 });
     }
+}
+
+inline void simple_thread_pool::wait_all()
+{
+    wait_all_flag = true;
 }
 
 template <class F, class... Args>
@@ -76,6 +83,8 @@ auto simple_thread_pool::enqueue(F&& f, Args&&... args)
 
 inline simple_thread_pool::~simple_thread_pool()
 {
+    while (!tasks.empty() && wait_all_flag) {};
+
     {
         std::unique_lock<std::mutex> lock(queue_mutex);
         stop = true;

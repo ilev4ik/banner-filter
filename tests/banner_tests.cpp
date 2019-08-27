@@ -42,40 +42,42 @@ TEST(SimpleBannerList, SingleBest)
             {1, 100},
             {2, 200}
     };
-    ASSERT_EQ(auction(banners, 1),(empty_banner_list<>{{2,200}}));
-}
-
-TEST(SimpleBannerList, AccumulatedSingleLotBest)
-{
-    empty_banner_list<> banners {
-            {1, 200},
-            {2, 200},
-            {2, 100}
-    };
     ASSERT_EQ(auction(banners, 1),(empty_banner_list<>{{2, 200}}));
 }
 
-TEST(SimpleBannerList, AccumulatedMultipleLotsBest)
+TEST(SimpleBannerList, SingleLotBest)
 {
     empty_banner_list<> banners {
             {1, 200},
             {2, 200},
             {2, 100}
     };
-    ASSERT_EQ(auction(banners, 2),(empty_banner_list<>{{2, 200}, {2, 100}}));
+    auto res = auction(banners, 1);
+    ASSERT_TRUE((res == empty_banner_list<>{{2, 200}}) || (res ==  empty_banner_list<>{{1, 200}}));
 }
 
-TEST(SimpleBannerList, AccumulatedMultipleLotsBest_ExtraLots)
+TEST(SimpleBannerList, MultipleLotsBest)
 {
     empty_banner_list<> banners {
             {1, 200},
             {2, 200},
             {2, 100}
     };
-    ASSERT_EQ(auction(banners, 15),(empty_banner_list<>{{2, 200}, {2, 100}}));
+    ASSERT_EQ(auction(banners, 2),(empty_banner_list<>{{1, 200}, {2, 200}}));
 }
 
-TEST(SimpleBannerList, MultiAccumulatedMultipleLotsBest)
+TEST(SimpleBannerList, MultipleLotsBestExtraLots)
+{
+    empty_banner_list<> banners {
+            {1, 200},
+            {2, 200},
+            {2, 100}
+    };
+
+    ASSERT_EQ(auction(banners, 2),(empty_banner_list<>{{1, 200}, {2, 200}}));
+}
+
+TEST(SimpleBannerList, MultipleLotsBestBoundedLots)
 {
     empty_banner_list<> banners {
             {1, 200},
@@ -84,7 +86,8 @@ TEST(SimpleBannerList, MultiAccumulatedMultipleLotsBest)
             {2, 100},
             {2, 1}
     };
-    ASSERT_EQ(auction(banners, 3),(empty_banner_list<>{{2, 200}, {2, 100}, {2, 1}}));
+
+    ASSERT_EQ(auction(banners, 2),(empty_banner_list<>{{1, 200}, {2, 200}}));
 }
 
 TEST(ComplexBannerList, BasicFilterOnEmptyList)
@@ -93,6 +96,7 @@ TEST(ComplexBannerList, BasicFilterOnEmptyList)
     filter<banner>filter;
     filter.add([](const banner& b) -> bool
     {
+        // banner list is empty. gcov won't be here
         return b.countries.empty() ? true : b.countries.count("russia");
     });
     ASSERT_EQ(auction(banners, 10, filter), empty_banner_list<>{});
@@ -114,7 +118,7 @@ TEST(ComplexBannerList, BasicFilterApplied)
     ASSERT_EQ(auction(banners, 1, filter), (empty_banner_list<>{{1, 100, "russia"}}));
 }
 
-TEST(ComplexBannerList, BasicFilterAppliedAccumulated)
+TEST(ComplexBannerList, MultiFilterApplied)
 {
     empty_banner_list<> banners {
             {1, 100, "russia"},
@@ -129,7 +133,7 @@ TEST(ComplexBannerList, BasicFilterAppliedAccumulated)
     {
         return b.countries.empty() ? true : (b.countries.count("russia") || b.countries.count("usa"));
     });
-    ASSERT_EQ(auction(banners, 3, filter), (empty_banner_list<>{{3, 500, "usa"}}));
+    ASSERT_EQ(auction(banners, 3, filter), (empty_banner_list<>{{3, 500, "usa"}, {2, 200, "usa"}, {1, 200, "russia"}}));
 }
 
 TEST(ComplexBannerList, AllObjectsFiltered)
@@ -159,7 +163,12 @@ TEST(InternalFeatures, IDsMoreThanHardwareConcurrency)
     for (std::size_t i = 0; i < banners_count; ++i) {
         banners.emplace_back(i+1, (i+1)*100);
     }
-    ASSERT_EQ(auction(banners, 2), (empty_banner_list<>{{(int)banners_count, (int)banners_count*100}}));
+    ASSERT_EQ(auction(banners, 2),(
+            empty_banner_list<>{
+                {(int)banners_count, banners_count*100},
+                {(int)banners_count-1, (banners_count-1)*100}
+            })
+        );
 }
 
 TEST(DerivedBannerPriority, CustomBannerPrioritizing)
@@ -171,16 +180,17 @@ TEST(DerivedBannerPriority, CustomBannerPrioritizing)
             {2, 100, "usa", 51},
             {2, 100, "usa", 52},
             {2, 1000, "usa", 1000},
+            {2, 1001, "usa", 1000},
             {2, 2000, "austria", 0}
     };
     filter<banner_ex> filter;
     filter.add([](const banner_ex& b) -> bool {
-        return b.price < 1000 && !b.countries.count("austria");
+        return b.price < 1001 && !b.countries.count("austria");
     });
 
     const auto expected = empty_banner_list<banner_ex>{
-        {2, 100, "usa", 100},
-        {2, 100, "usa", 52}
+            {2, 1000, "usa", 1000},
+            {1, 100, "russia", 100},
     };
     ASSERT_EQ(auction(banners, 2, filter), expected);
 }

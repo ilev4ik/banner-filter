@@ -27,8 +27,8 @@ private:
     bool apply(const T& obj) const
     {
         // проверка объекта на условия всех предикатов фильтра
-        auto check_pred = [obj](const pred_type& pred) { return !pred(obj); };
-        return has_preds() ? std::all_of(m_preds.begin(), m_preds.end(), check_pred) : false;
+        auto check_pred = [obj](const pred_type& pred) { return pred(obj); };
+        return has_preds() ? std::all_of(m_preds.begin(), m_preds.end(), check_pred) : true;
     }
 
 private:

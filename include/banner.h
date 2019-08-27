@@ -25,7 +25,12 @@ public:
     std::unordered_set<std::string> countries;
 
     friend std::ostream& operator<<(std::ostream& os, const banner& b) {
-        return os << '{' << b.adv_id << ", " << b.price << '}';
+        os << '{' << b.adv_id << ", " << b.price;
+        if (!b.countries.empty()) {
+            os << ", " << *b.countries.begin() << "...";
+        }
+        os << '}';
+        return os;
     }
 };
 
