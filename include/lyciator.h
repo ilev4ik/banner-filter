@@ -20,24 +20,22 @@ inline void insert_sorted_vecs(C& c, const T& vec, Compare comp) {
 template <typename BT>
 class lyciator
 {
-    using calc_rv_t = typename banner_traits<BT>::calc_rv;
     using compare_greater = typename banner_traits<BT>::greater;
     using compare_non_equal = typename banner_traits<BT>::non_equal;
-    using summator = typename banner_traits<BT>::summator;
-    using sum_t = typename banner_traits<BT>::sum_t;
-    using calc_it_t = typename std::vector<calc_rv_t>::iterator;
 
     template <typename T>
     friend std::vector<T> auction(std::vector<T> banners, std::size_t lots, filter<T> banner_filter);
 
     // precondition: banners is not empty
     void find_best_max_banners(std::vector<BT>& banners) noexcept {
-        // sort descending
+        // sort descending by rank()
         std::sort(banners.begin(), banners.end(), compare_greater{});
 
-        // find first != max
+        // find first banner which rank() != max
         auto found_it = std::adjacent_find(banners.begin(), banners.end(), compare_non_equal{});
         auto from_it = found_it == banners.end() ? found_it : std::next(found_it);
+
+        // erase the remaining ones
         banners.erase(from_it, banners.end());
     }
 
@@ -71,6 +69,7 @@ class lyciator
     {
         if (lots == 0) throw std::invalid_argument("lots parameter have to be positive");
 
+        // move banners satisfying filter and group by id into hash table
         std::unordered_map<int, std::vector<BT>> by_adv;
         std::copy_if(
                 std::make_move_iterator(m_banners.begin()),
@@ -81,17 +80,27 @@ class lyciator
 
         if (by_adv.empty()) return {};
 
+        // remove non-best banners
+        // remaining: 1..* (equal) best banners
         slice_bests_concurrently(by_adv);
+
         std::vector<BT> temp;
-        temp.reserve(by_adv.size()); // min size
+        // at least reserve groups number size
+        temp.reserve(by_adv.size());
         for (auto&& kv : by_adv)
         {
+            // insert banner in desc priority with repetitions
+            // e.g. (grouped by id and rank()): 5, 5, 5, 5, 5, 4, 4, 4, 4, 2, 2, 2
             insert_sorted_vecs(temp, kv.second, compare_greater{});
         }
 
         // choose uniformly the random best one
         std::vector<BT> rv;
         rv.reserve(by_adv.size());
+
+        // choose uniformly banner from each group
+        // (5, 5, 5*, 5, 5), (4*, 4, 4, 4), (2, 2, 2*)
+        // push into "return value"
         auto start = temp.begin();
         while (start != temp.end() && rv.size() != lots)
         {
