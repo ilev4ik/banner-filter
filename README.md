@@ -1,7 +1,7 @@
 # Рекламный аукцион
 
-[![Build Status](https://travis-ci.com/ilev4ik/banner-filter.svg?branch=master)](https://travis-ci.com/ilev4ik/banner-filter)
-[![codecov](https://codecov.io/gh/ilev4ik/banner-filter/branch/master/graph/badge.svg)](https://codecov.io/gh/ilev4ik/banner-filter)
+[![Build Status](https://travis-ci.com/ilev4ik/banner-filter.svg?branch=dev_v2)](https://travis-ci.com/ilev4ik/banner-filter)
+[![codecov](https://codecov.io/gh/ilev4ik/banner-filter/branch/dev_v2/graph/badge.svg)](https://codecov.io/gh/ilev4ik/banner-filter)
 
 
 Реализована функция рекламного аукциона с дополнительными возможностями:

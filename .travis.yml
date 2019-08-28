@@ -64,7 +64,7 @@ branches:
   only:
     - ci
     - master
-    - dev
+    - dev_v2
 
 notifications:
   email:
