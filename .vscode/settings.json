@@ -1,0 +1,4 @@
+{
+    "cmake.generator": "Unix Makefiles",
+    "testMate.cpp.test.executables": "bin/*test*"
+}
