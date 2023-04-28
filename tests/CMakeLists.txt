@@ -7,4 +7,7 @@ target_include_directories(banner_tests PRIVATE
         )
 target_link_libraries(banner_tests  GTest::GTest GTest::Main coverage_config)
 
-add_test(UnitTests ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/banner_tests)
+add_test(
+    NAME UnitTests
+    COMMAND $<TARGET_FILE:banner_tests>
+)
